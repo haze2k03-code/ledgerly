@@ -1,0 +1,33 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017" # 27018 on your laptop, so it won't clash with a local MongoDB
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      retries: 10
+
+  server:
+    build: ./server
+    env_file: .env
+    environment:
+      # Inside Docker the API reaches MongoDB by its service name, not localhost.
+      MONGODB_URI: mongodb://mongo:27017/ledgerly
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+
+  web:
+    build: ./web
+    depends_on:
+      - server
+    ports:
+      - "8080:80"
+
+volumes:
+  mongodata:
